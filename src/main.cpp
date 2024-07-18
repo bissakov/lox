@@ -76,7 +76,7 @@ struct Token {
   int line;
 };
 
-static void FreeFileMemory(void **memory) {
+static void FreeMemory(void **memory) {
   if (!memory || !*memory) {
     return;
   }
@@ -110,7 +110,7 @@ static FileResult ReadEntireFile(char *file_path) {
   result.content = VirtualAlloc(0, result.file_size, MEM_RESERVE | MEM_COMMIT,
                                 PAGE_READWRITE);
   if (!result.content) {
-    FreeFileMemory(&result.content);
+    FreeMemory(&result.content);
     CloseHandle(file_handle);
     return result;
   }
@@ -119,7 +119,7 @@ static FileResult ReadEntireFile(char *file_path) {
   if (!(ReadFile(file_handle, result.content, result.file_size, &bytes_read,
                  0) &&
         result.file_size == bytes_read)) {
-    FreeFileMemory(&result.content);
+    FreeMemory(&result.content);
     CloseHandle(file_handle);
     return result;
   }
@@ -129,99 +129,91 @@ static FileResult ReadEntireFile(char *file_path) {
   return result;
 }
 
-char Advance() {
-}
+void AddToken(std::vector<Token> *tokens, enum TokenType type, int literal,
+              int start, int current, void *source, uint32_t source_length) {
+  void *substr = 0;
+  int substr_length = current - start + 1;
 
-char *Slice(const char *arr, int start, int end) {
-  // Check for valid indices
-  if (start < 0 || end < 0 || start > end) {
-    return nullptr;
+  substr =
+      VirtualAlloc(0, substr_length, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  if (!substr) {
+    FreeMemory(&substr);
+    return;
   }
 
-  // Calculate the length of the slice
-  int length = end - start;
+  memcpy(substr, reinterpret_cast<char *>(source) + start, substr_length);
 
-  // Allocate memory for the new slice (+1 for the null terminator)
-  char *result = new char[length + 1];
-
-  // Copy the characters from the original array to the new slice
-  for (int i = 0; i < length; ++i) {
-    result[i] = arr[start + i];
-  }
-
-  // Null-terminate the new slice
-  result[length] = '\0';
-
-  return result;
+  Token token = {};
+  token.type = type;
+  token.lexeme = reinterpret_cast<char *>(substr);
+  token.literal = literal;
+  token.line = 1;
+  tokens->push_back(token);
 }
 
-void AddToken(enum TokenType type, int literal, int start, int current,
-              char *source, int source_length) {
-  char substr[] = "";
-  Slice(source, start, current);
-  source[sizeof(file_result.content)] = 0;
-}
-
-static void ScanToken(char *source, int *current) {
-  char c = source[*current++];
+static void ScanToken(std::vector<Token> *tokens, void *source,
+                      uint32_t source_length, int start, int *current) {
+  char c = reinterpret_cast<char *>(source)[*current++];
 
   switch (c) {
     case '(': {
-      AddToken(LEFT_PARENTHESIS);
+      AddToken(tokens, LEFT_PARENTHESIS, 0, start, *current, source,
+               source_length);
       break;
     }
     case ')': {
-      AddToken(RIGHT_PARENTHESIS);
+      AddToken(tokens, RIGHT_PARENTHESIS, 0, start, *current, source,
+               source_length);
       break;
     }
     case '{': {
-      AddToken(LEFT_BRACE);
+      AddToken(tokens, LEFT_BRACE, 0, start, *current, source, source_length);
       break;
     }
     case '}': {
-      AddToken(RIGHT_BRACE);
+      AddToken(tokens, RIGHT_BRACE, 0, start, *current, source, source_length);
       break;
     }
     case ',': {
-      AddToken(COMMA);
+      AddToken(tokens, COMMA, 0, start, *current, source, source_length);
       break;
     }
     case '.': {
-      AddToken(DOT);
+      AddToken(tokens, DOT, 0, start, *current, source, source_length);
       break;
     }
     case '-': {
-      AddToken(MINUS);
+      AddToken(tokens, MINUS, 0, start, *current, source, source_length);
       break;
     }
     case '+': {
-      AddToken(PLUS);
+      AddToken(tokens, PLUS, 0, start, *current, source, source_length);
       break;
     }
     case ';': {
-      AddToken(SEMICOLON);
+      AddToken(tokens, SEMICOLON, 0, start, *current, source, source_length);
       break;
     }
     case '*': {
-      AddToken(STAR);
+      AddToken(tokens, STAR, 0, start, *current, source, source_length);
       break;
     }
   }
 }
 
-static bool IsAtEnd(int current, char *source, int source_length) {
+static bool IsAtEnd(int current, int source_length) {
   return current >= source_length;
 }
 
-static void ScanTokens(char *source, int source_length,
+static void ScanTokens(void *source, int source_length,
                        std::vector<Token> *tokens) {
   int start = 0;
   int current = 0;
   int line = 1;
 
-  while (!IsAtEnd(current, source, source_length)) {
+  while (!IsAtEnd(current, source_length)) {
     start = current;
-    ScanToken();
+    ScanToken(tokens, source, source_length, start, &current);
   }
 
   Token eof_token = {};
@@ -232,7 +224,7 @@ static void ScanTokens(char *source, int source_length,
   tokens->push_back(eof_token);
 }
 
-static Error *Run(char *source, int source_length) {
+static Error *Run(void *source, uint32_t source_length) {
   Error *error = {};
 
   std::vector<Token> tokens;
@@ -255,18 +247,14 @@ static int RunFile(char *file_path) {
   if (!file_result.content) {
     printf("Error: Could not read file\n");
     return EXIT_FAILURE;
-
-    FreeFileMemory(&file_result.content);
   }
 
   printf("File size: %d\n", file_result.file_size);
 
-  int source_length = sizeof(file_result.content);
-  char source[(sizeof file_result.content) + 1];
-  memcpy(source, file_result.content, sizeof(file_result.content));
-  source[sizeof(file_result.content)] = 0;
+  Error *error = Run(file_result.content, file_result.file_size);
 
-  Error *error = Run(source, source_length);
+  FreeMemory(&file_result.content);
+
   if (error) {
     ReportError(error->line, error->where, error->message);
   }
