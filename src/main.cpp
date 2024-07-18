@@ -149,6 +149,8 @@ void AddToken(std::vector<Token> *tokens, enum TokenType type, int literal,
   token.literal = literal;
   token.line = 1;
   tokens->push_back(token);
+
+  FreeMemory(&substr);
 }
 
 static void ScanToken(std::vector<Token> *tokens, void *source,
