@@ -1,59 +1,12 @@
+#include "../src/main.h"
+
 #include <windows.h>
 
+#include <climits>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <vector>
-
-#define ArraySize(arr) (sizeof(arr) / sizeof((arr)[0]))
-#define Assert(expression)              \
-  if (!static_cast<bool>(expression)) { \
-    __debugbreak();                     \
-  }
-
-struct FileResult {
-  uint32_t file_size;
-  void *content;
-};
-
-struct Error {
-  int line;
-  char *where;
-  char *message;
-};
-
-// clang-format off
-enum TokenType {
-  LEFT_PAREN, RIGHT_PAREN,
-  LEFT_BRACE, RIGHT_BRACE,
-
-  COMMA, DOT, SEMICOLON,
-
-  MINUS, PLUS, SLASH, STAR,
-  BANG, BANG_EQUAL,
-  EQUAL, EQUAL_EQUAL,
-  GREATER, GREATER_EQUAL,
-  LESS, LESS_EQUAL,
-
-  IDENTIFIER, STRING, NUMBER,
-
-  AND, CLASS, ELSE,
-  BOOL_FALSE, BOOL_TRUE,
-  FUNC, FOR, IF, NIL, OR,
-  PRINT, RETURN, SUPER,
-  SELF, VAR, WHILE,
-
-  END_OF_FILE
-};
-// clang-format on
-
-struct Token {
-  enum TokenType type;
-  char *lexeme;
-  int literal;
-  int line;
-};
 
 static void FreeMemory(void **memory) {
   if (!memory || !*memory) {
@@ -108,8 +61,10 @@ static FileResult ReadEntireFile(char *file_path) {
   return result;
 }
 
-void AddToken(std::vector<Token> *tokens, enum TokenType type, int literal,
-              int start, int current, void *source, uint32_t source_length) {
+Token *GetToken(Token *tokens, enum TokenType type, int literal, int start,
+                int current, void *source, uint32_t source_length) {
+  Token *token = {};
+
   void *substr = 0;
   int substr_length = current - start + 1;
 
@@ -117,82 +72,121 @@ void AddToken(std::vector<Token> *tokens, enum TokenType type, int literal,
       VirtualAlloc(0, substr_length, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   if (!substr) {
     FreeMemory(&substr);
-    return;
+    return token;
   }
 
   memcpy(substr, reinterpret_cast<char *>(source) + start, substr_length);
 
-  Token token = {};
-  token.type = type;
-  token.lexeme = reinterpret_cast<char *>(substr);
-  token.literal = literal;
-  token.line = 1;
-  tokens->push_back(token);
+  token->type = type;
+  token->lexeme = reinterpret_cast<char *>(substr);
+  token->literal = literal;
+  token->line = 1;
 
   FreeMemory(&substr);
+
+  return token;
 }
 
-static void ScanToken(std::vector<Token> *tokens, void *source,
-                      uint32_t source_length, int start, int *current) {
+static void ReportError(Error *error) {
+  printf("[line %d] Error %s: %s", error->line, error->where, error->message);
+}
+
+static Result *ScanToken(Token *tokens, void *source, uint32_t source_length,
+                         int line, int start, int *current,
+                         int *current_token_idx) {
+  Result *result = {};
   char c = reinterpret_cast<char *>(source)[*current++];
 
   switch (c) {
     case '(': {
-      AddToken(tokens, LEFT_PAREN, 0, start, *current, source, source_length);
+      result->token = GetToken(tokens, LEFT_PAREN, 0, start, *current, source,
+                               source_length);
       break;
     }
     case ')': {
-      AddToken(tokens, RIGHT_PAREN, 0, start, *current, source, source_length);
+      result->token = GetToken(tokens, RIGHT_PAREN, 0, start, *current, source,
+                               source_length);
       break;
     }
     case '{': {
-      AddToken(tokens, LEFT_BRACE, 0, start, *current, source, source_length);
+      result->token = GetToken(tokens, LEFT_BRACE, 0, start, *current, source,
+                               source_length);
       break;
     }
     case '}': {
-      AddToken(tokens, RIGHT_BRACE, 0, start, *current, source, source_length);
+      result->token = GetToken(tokens, RIGHT_BRACE, 0, start, *current, source,
+                               source_length);
       break;
     }
     case ',': {
-      AddToken(tokens, COMMA, 0, start, *current, source, source_length);
+      result->token =
+          GetToken(tokens, COMMA, 0, start, *current, source, source_length);
       break;
     }
     case '.': {
-      AddToken(tokens, DOT, 0, start, *current, source, source_length);
+      result->token =
+          GetToken(tokens, DOT, 0, start, *current, source, source_length);
       break;
     }
     case '-': {
-      AddToken(tokens, MINUS, 0, start, *current, source, source_length);
+      result->token =
+          GetToken(tokens, MINUS, 0, start, *current, source, source_length);
       break;
     }
     case '+': {
-      AddToken(tokens, PLUS, 0, start, *current, source, source_length);
+      result->token =
+          GetToken(tokens, PLUS, 0, start, *current, source, source_length);
       break;
     }
     case ';': {
-      AddToken(tokens, SEMICOLON, 0, start, *current, source, source_length);
+      result->token = GetToken(tokens, SEMICOLON, 0, start, *current, source,
+                               source_length);
       break;
     }
     case '*': {
-      AddToken(tokens, STAR, 0, start, *current, source, source_length);
+      result->token =
+          GetToken(tokens, STAR, 0, start, *current, source, source_length);
       break;
     }
+    default: {
+      result->status = RESULT_ERROR;
+      result->error->line = line;
+      result->error->where = "";
+      result->error->message = "Unexpected character.";
+    }
   }
+
+  if (result->status != RESULT_ERROR) {
+    result->status = RESULT_OK;
+  }
+
+  return result;
 }
 
 static bool IsAtEnd(int current, int source_length) {
   return current >= source_length;
 }
 
-static void ScanTokens(void *source, int source_length,
-                       std::vector<Token> *tokens) {
+static Result *ScanTokens(void *source, int source_length, Token *tokens,
+                          int *current_token_idx) {
   int start = 0;
   int current = 0;
   int line = 1;
 
+  Result *result = {};
   while (!IsAtEnd(current, source_length)) {
     start = current;
-    ScanToken(tokens, source, source_length, start, &current);
+    result = ScanToken(tokens, source, source_length, line, start, &current,
+                       current_token_idx);
+    if (result->status == RESULT_ERROR) {
+      break;
+    } else {
+      tokens[*current_token_idx++] = *result->token;
+    }
+  }
+
+  if (result->status == RESULT_ERROR) {
+    return result;
   }
 
   Token eof_token = {};
@@ -200,23 +194,25 @@ static void ScanTokens(void *source, int source_length,
   eof_token.lexeme = const_cast<char *>("");
   eof_token.literal = 0;
   eof_token.line = line;
-  tokens->push_back(eof_token);
+
+  tokens[*current_token_idx++] = eof_token;
+
+  return result;
 }
 
-static Error *Run(void *source, uint32_t source_length) {
-  Error *error = {};
+static Result *Run(void *source, uint32_t source_length) {
+  Result *result = {};
 
-  std::vector<Token> tokens;
-  ScanTokens(source, source_length, &tokens);
-  for (int i = 0; i < ArraySize(tokens); ++i) {
+  Token *tokens = new Token[INT_MAX];
+  int current_token_idx = 0;
+  result = ScanTokens(source, source_length, tokens, &current_token_idx);
+  for (int i = 0; i <= current_token_idx; ++i) {
     printf("%d %s %d\n", tokens[i].type, tokens[i].lexeme, tokens[i].literal);
   }
 
-  return error;
-}
+  delete[] tokens;
 
-static void ReportError(int line, char *where, char *message) {
-  printf("[line %d] Error %s: %s", line, where, message);
+  return result;
 }
 
 static int RunFile(char *file_path) {
@@ -230,12 +226,12 @@ static int RunFile(char *file_path) {
 
   printf("File size: %d\n", file_result.file_size);
 
-  Error *error = Run(file_result.content, file_result.file_size);
+  Result *result = Run(file_result.content, file_result.file_size);
 
   FreeMemory(&file_result.content);
 
-  if (error) {
-    ReportError(error->line, error->where, error->message);
+  if (result->status == RESULT_ERROR) {
+    ReportError(result->error);
   }
 
   return EXIT_SUCCESS;
