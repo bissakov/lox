@@ -23,51 +23,30 @@ struct Error {
   char *message;
 };
 
+// clang-format off
 enum TokenType {
-  LEFT_PARENTHESIS,
-  RIGHT_PARENTHESIS,
-  LEFT_BRACE,
-  RIGHT_BRACE,
-  COMMA,
-  DOT,
-  MINUS,
-  PLUS,
-  SEMICOLON,
-  SLASH,
-  STAR,
+  LEFT_PAREN, RIGHT_PAREN,
+  LEFT_BRACE, RIGHT_BRACE,
 
-  BANG,
-  BANG_EQUAL,
-  EQUAL,
-  EQUAL_EQUAL,
-  GREATER,
-  GREATER_EQUAL,
-  LESS,
-  LESS_EQUAL,
+  COMMA, DOT, SEMICOLON,
 
-  IDENTIFIER,
-  STRING,
-  NUMBER,
+  MINUS, PLUS, SLASH, STAR,
+  BANG, BANG_EQUAL,
+  EQUAL, EQUAL_EQUAL,
+  GREATER, GREATER_EQUAL,
+  LESS, LESS_EQUAL,
 
-  AND,
-  CLASS,
-  ELSE,
-  BOOL_FALSE,
-  FUN,
-  FOR,
-  IF,
-  NIL,
-  OR,
-  PRINT,
-  RETURN,
-  SUPER,
-  SELF,
-  BOOL_TRUE,
-  VAR,
-  WHILE,
+  IDENTIFIER, STRING, NUMBER,
+
+  AND, CLASS, ELSE,
+  BOOL_FALSE, BOOL_TRUE,
+  FUNC, FOR, IF, NIL, OR,
+  PRINT, RETURN, SUPER,
+  SELF, VAR, WHILE,
 
   END_OF_FILE
 };
+// clang-format on
 
 struct Token {
   enum TokenType type;
@@ -159,13 +138,11 @@ static void ScanToken(std::vector<Token> *tokens, void *source,
 
   switch (c) {
     case '(': {
-      AddToken(tokens, LEFT_PARENTHESIS, 0, start, *current, source,
-               source_length);
+      AddToken(tokens, LEFT_PAREN, 0, start, *current, source, source_length);
       break;
     }
     case ')': {
-      AddToken(tokens, RIGHT_PARENTHESIS, 0, start, *current, source,
-               source_length);
+      AddToken(tokens, RIGHT_PAREN, 0, start, *current, source, source_length);
       break;
     }
     case '{': {
