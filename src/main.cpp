@@ -2,11 +2,136 @@
 
 #include <windows.h>
 
-#include <climits>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
+
+static bool had_error;
+
+static inline const char *ToString(enum TokenType token_type) {
+  switch (token_type) {
+    case LEFT_PAREN: {
+      return "LEFT_PAREN";
+    }
+    case RIGHT_PAREN: {
+      return "RIGHT_PAREN";
+    }
+    case LEFT_BRACE: {
+      return "LEFT_BRACE";
+    }
+    case RIGHT_BRACE: {
+      return "RIGHT_BRACE";
+    }
+    case COMMA: {
+      return "COMMA";
+    }
+    case DOT: {
+      return "DOT";
+    }
+    case SEMICOLON: {
+      return "SEMICOLON";
+    }
+    case MINUS: {
+      return "MINUS";
+    }
+    case PLUS: {
+      return "PLUS";
+    }
+    case SLASH: {
+      return "SLASH";
+    }
+    case STAR: {
+      return "STAR";
+    }
+    case BANG: {
+      return "BANG";
+    }
+    case BANG_EQUAL: {
+      return "BANG_EQUAL";
+    }
+    case EQUAL: {
+      return "EQUAL";
+    }
+    case EQUAL_EQUAL: {
+      return "EQUAL_EQUAL";
+    }
+    case GREATER: {
+      return "GREATER";
+    }
+    case GREATER_EQUAL: {
+      return "GREATER_EQUAL";
+    }
+    case LESS: {
+      return "LESS";
+    }
+    case LESS_EQUAL: {
+      return "LESS_EQUAL";
+    }
+    case IDENTIFIER: {
+      return "IDENTIFIER";
+    }
+    case STRING: {
+      return "STRING";
+    }
+    case NUMBER: {
+      return "NUMBER";
+    }
+    case AND: {
+      return "AND";
+    }
+    case CLASS: {
+      return "CLASS";
+    }
+    case ELSE: {
+      return "ELSE";
+    }
+    case BOOL_FALSE: {
+      return "BOOL_FALSE";
+    }
+    case BOOL_TRUE: {
+      return "BOOL_TRUE";
+    }
+    case FUNC: {
+      return "FUNC";
+    }
+    case FOR: {
+      return "FOR";
+    }
+    case IF: {
+      return "IF";
+    }
+    case NIL: {
+      return "NIL";
+    }
+    case OR: {
+      return "OR";
+    }
+    case PRINT: {
+      return "PRINT";
+    }
+    case RETURN: {
+      return "RETURN";
+    }
+    case SUPER: {
+      return "SUPER";
+    }
+    case SELF: {
+      return "SELF";
+    }
+    case VAR: {
+      return "VAR";
+    }
+    case WHILE: {
+      return "WHILE";
+    }
+    case END_OF_FILE: {
+      return "END_OF_FILE";
+    }
+    default: {
+      return "unknown enum";
+    }
+  }
+}
 
 static void FreeMemory(void **memory) {
   if (!memory || !*memory) {
@@ -61,158 +186,183 @@ static FileResult ReadEntireFile(char *file_path) {
   return result;
 }
 
-Token *GetToken(Token *tokens, enum TokenType type, int literal, int start,
-                int current, void *source, uint32_t source_length) {
-  Token *token = {};
-
-  void *substr = 0;
-  int substr_length = current - start + 1;
-
-  substr =
-      VirtualAlloc(0, substr_length, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-  if (!substr) {
-    FreeMemory(&substr);
-    return token;
+static void GetToken(Token *token, enum TokenType type, int literal, int start,
+                     int current, void *source) {
+  if ((current - start) == 1) {
+    char lexeme = reinterpret_cast<char *>(source)[start];
+    token->lexeme = lexeme;
+  } else {
+    // void *substr = 0;
+    // int substr_length = current - start + 1;
+    //
+    // substr = VirtualAlloc(0, substr_length, MEM_RESERVE | MEM_COMMIT,
+    //                       PAGE_READWRITE);
+    // if (!substr) {
+    //   FreeMemory(&substr);
+    // }
+    //
+    // memcpy(substr, reinterpret_cast<char *>(source) + start, substr_length);
+    //
+    // token->lexeme = reinterpret_cast<char *>(substr);
   }
 
-  memcpy(substr, reinterpret_cast<char *>(source) + start, substr_length);
-
   token->type = type;
-  token->lexeme = reinterpret_cast<char *>(substr);
   token->literal = literal;
   token->line = 1;
-
-  FreeMemory(&substr);
-
-  return token;
 }
 
 static void ReportError(Error *error) {
-  printf("[line %d] Error %s: %s", error->line, error->where, error->message);
+  printf("[line %d] Error %s: %s\n", error->line, error->where, error->message);
 }
 
-static Result *ScanToken(Token *tokens, void *source, uint32_t source_length,
-                         int line, int start, int *current,
-                         int *current_token_idx) {
-  Result *result = {};
-  char c = reinterpret_cast<char *>(source)[*current++];
+static bool Match(char expected_char, void *source, int source_length,
+                  int *current) {
+  if (IsAtEnd(*current, source_length)) {
+    return false;
+  }
 
-  switch (c) {
+  if (reinterpret_cast<char *>(source)[*current] != expected_char) {
+    return false;
+  }
+
+  *current = *current + 1;
+  return true;
+}
+
+static void ScanToken(Result *result, void *source, int source_length, int line,
+                      int start, int *current) {
+  char chara = reinterpret_cast<char *>(source)[*current];
+  *current = *current + 1;
+
+  switch (chara) {
     case '(': {
-      result->token = GetToken(tokens, LEFT_PAREN, 0, start, *current, source,
-                               source_length);
+      GetToken(&result->token, LEFT_PAREN, 0, start, *current, source);
       break;
     }
     case ')': {
-      result->token = GetToken(tokens, RIGHT_PAREN, 0, start, *current, source,
-                               source_length);
+      GetToken(&result->token, RIGHT_PAREN, 0, start, *current, source);
       break;
     }
     case '{': {
-      result->token = GetToken(tokens, LEFT_BRACE, 0, start, *current, source,
-                               source_length);
+      GetToken(&result->token, LEFT_BRACE, 0, start, *current, source);
       break;
     }
     case '}': {
-      result->token = GetToken(tokens, RIGHT_BRACE, 0, start, *current, source,
-                               source_length);
+      GetToken(&result->token, RIGHT_BRACE, 0, start, *current, source);
       break;
     }
     case ',': {
-      result->token =
-          GetToken(tokens, COMMA, 0, start, *current, source, source_length);
+      GetToken(&result->token, COMMA, 0, start, *current, source);
       break;
     }
     case '.': {
-      result->token =
-          GetToken(tokens, DOT, 0, start, *current, source, source_length);
+      GetToken(&result->token, DOT, 0, start, *current, source);
       break;
     }
     case '-': {
-      result->token =
-          GetToken(tokens, MINUS, 0, start, *current, source, source_length);
+      GetToken(&result->token, MINUS, 0, start, *current, source);
       break;
     }
     case '+': {
-      result->token =
-          GetToken(tokens, PLUS, 0, start, *current, source, source_length);
+      GetToken(&result->token, PLUS, 0, start, *current, source);
       break;
     }
     case ';': {
-      result->token = GetToken(tokens, SEMICOLON, 0, start, *current, source,
-                               source_length);
+      GetToken(&result->token, SEMICOLON, 0, start, *current, source);
       break;
     }
     case '*': {
-      result->token =
-          GetToken(tokens, STAR, 0, start, *current, source, source_length);
+      GetToken(&result->token, STAR, 0, start, *current, source);
       break;
     }
+
+    case '!': {
+      enum TokenType token_type =
+          Match('=', source, source_length, current) ? BANG_EQUAL : BANG;
+      GetToken(&result->token, token_type, 0, start, *current, source);
+      break;
+    }
+    case '=': {
+      enum TokenType token_type =
+          Match('=', source, source_length, current) ? EQUAL_EQUAL : EQUAL;
+      GetToken(&result->token, token_type, 0, start, *current, source);
+      break;
+    }
+    case '<': {
+      enum TokenType token_type =
+          Match('=', source, source_length, current) ? LESS_EQUAL : LESS;
+      GetToken(&result->token, token_type, 0, start, *current, source);
+      break;
+    }
+    case '>': {
+      enum TokenType token_type =
+          Match('=', source, source_length, current) ? GREATER_EQUAL : GREATER;
+      GetToken(&result->token, token_type, 0, start, *current, source);
+      break;
+    }
+
     default: {
       result->status = RESULT_ERROR;
-      result->error->line = line;
-      result->error->where = "";
-      result->error->message = "Unexpected character.";
+      result->error.line = line;
+      result->error.where = "";
+      result->error.message = "Unexpected character.";
+      had_error = true;
+
+      ReportError(&result->error);
     }
   }
 
   if (result->status != RESULT_ERROR) {
     result->status = RESULT_OK;
   }
-
-  return result;
 }
 
 static bool IsAtEnd(int current, int source_length) {
   return current >= source_length;
 }
 
-static Result *ScanTokens(void *source, int source_length, Token *tokens,
-                          int *current_token_idx) {
+static void ScanTokens(void *source, int source_length, Token *tokens,
+                       int *current_token_idx) {
   int start = 0;
   int current = 0;
   int line = 1;
 
-  Result *result = {};
   while (!IsAtEnd(current, source_length)) {
     start = current;
-    result = ScanToken(tokens, source, source_length, line, start, &current,
-                       current_token_idx);
-    if (result->status == RESULT_ERROR) {
-      break;
-    } else {
-      tokens[*current_token_idx++] = *result->token;
+    Result result = {};
+    ScanToken(&result, source, source_length, line, start, &current);
+    if (result.status == RESULT_ERROR) {
+      current++;
+      continue;
     }
-  }
 
-  if (result->status == RESULT_ERROR) {
-    return result;
+    tokens[*current_token_idx] = result.token;
+    *current_token_idx = *current_token_idx + 1;
   }
 
   Token eof_token = {};
   eof_token.type = END_OF_FILE;
-  eof_token.lexeme = const_cast<char *>("");
+  eof_token.lexeme = 0;
   eof_token.literal = 0;
   eof_token.line = line;
 
   tokens[*current_token_idx++] = eof_token;
-
-  return result;
 }
 
-static Result *Run(void *source, uint32_t source_length) {
-  Result *result = {};
-
-  Token *tokens = new Token[INT_MAX];
+static void Run(void *source, uint32_t source_length) {
+  Token *tokens = new Token[2048];
   int current_token_idx = 0;
-  result = ScanTokens(source, source_length, tokens, &current_token_idx);
-  for (int i = 0; i <= current_token_idx; ++i) {
-    printf("%d %s %d\n", tokens[i].type, tokens[i].lexeme, tokens[i].literal);
+  ScanTokens(source, source_length, tokens, &current_token_idx);
+  for (int i = 0; i < current_token_idx + 1; ++i) {
+    Token *token = &tokens[i];
+    printf("type: %s\tlexeme: %c\tliteral: %d\n", ToString(token->type),
+           token->lexeme, token->literal);
+
+    VirtualFree(&token->lexeme, 0, MEM_RELEASE);
+    token->lexeme = 0;
   }
 
   delete[] tokens;
-
-  return result;
 }
 
 static int RunFile(char *file_path) {
@@ -224,15 +374,9 @@ static int RunFile(char *file_path) {
     return EXIT_FAILURE;
   }
 
-  printf("File size: %d\n", file_result.file_size);
-
-  Result *result = Run(file_result.content, file_result.file_size);
+  Run(file_result.content, file_result.file_size);
 
   FreeMemory(&file_result.content);
-
-  if (result->status == RESULT_ERROR) {
-    ReportError(result->error);
-  }
 
   return EXIT_SUCCESS;
 }

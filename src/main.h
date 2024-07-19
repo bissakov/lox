@@ -43,7 +43,7 @@ enum TokenType {
 
 struct Token {
   enum TokenType type;
-  char *lexeme;
+  char lexeme;
   int literal;
   int line;
 };
@@ -59,28 +59,30 @@ typedef enum { RESULT_OK, RESULT_ERROR } ResultStatus;
 typedef struct {
   ResultStatus status;
   union {
-    Token *token;
-    Error *error;
+    Token token;
+    Error error;
   };
 } Result;
 
 static void FreeMemory(void **memory);
 static FileResult ReadEntireFile(char *file_path);
 
-Token *GetToken(Token *tokens, enum TokenType type, int literal, int start,
-                int current, void *source, uint32_t source_length);
+Token *GetToken(enum TokenType type, int literal, int start, int current,
+                void *source);
 
 static void ReportError(Error *error);
 
-static Result *ScanToken(Token *tokens, void *source, uint32_t source_length,
-                         int line, int start, int *current,
-                         int *current_token_idx);
+static bool Match(char expected_char, void *source, int source_length,
+                  int *current);
+
+static void ScanToken(Result *result, void *source, int source_length, int line,
+                      int start, int *current);
 
 static bool IsAtEnd(int current, int source_length);
 
-static Result *ScanTokens(void *source, int source_length, Token *tokens);
+static void ScanTokens(void *source, int source_length, Token *tokens);
 
-static Result *Run(void *source, uint32_t source_length);
+static void Run(void *source, uint32_t source_length);
 
 static int RunFile(char *file_path);
 static void RunPrompt();
