@@ -41,9 +41,14 @@ enum TokenType {
 };
 // clang-format on
 
+struct Lexeme {
+  const char *start;
+  int length;
+};
+
 struct Token {
   enum TokenType type;
-  char lexeme;
+  Lexeme lexeme;
   int literal;
   int line;
 };
@@ -54,15 +59,15 @@ struct Error {
   const char *message;
 };
 
-typedef enum { RESULT_OK, RESULT_ERROR } ResultStatus;
+enum ResultStatus { RESULT_OK, RESULT_ERROR };
 
-typedef struct {
+struct Result {
   ResultStatus status;
   union {
     Token token;
     Error error;
   };
-} Result;
+};
 
 static void FreeMemory(void **memory);
 static FileResult ReadEntireFile(char *file_path);

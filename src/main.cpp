@@ -188,25 +188,12 @@ static FileResult ReadEntireFile(char *file_path) {
 
 static void GetToken(Token *token, enum TokenType type, int literal, int start,
                      int current, void *source) {
-  if ((current - start) == 1) {
-    char lexeme = reinterpret_cast<char *>(source)[start];
-    token->lexeme = lexeme;
-  } else {
-    // void *substr = 0;
-    // int substr_length = current - start + 1;
-    //
-    // substr = VirtualAlloc(0, substr_length, MEM_RESERVE | MEM_COMMIT,
-    //                       PAGE_READWRITE);
-    // if (!substr) {
-    //   FreeMemory(&substr);
-    // }
-    //
-    // memcpy(substr, reinterpret_cast<char *>(source) + start, substr_length);
-    //
-    // token->lexeme = reinterpret_cast<char *>(substr);
-  }
+  Lexeme lexeme = {};
+  lexeme.start = reinterpret_cast<const char *>(source) + start;
+  lexeme.length = ((current - start) == 1) ? 1 : 2;
 
   token->type = type;
+  token->lexeme = lexeme;
   token->literal = literal;
   token->line = 1;
 }
@@ -342,7 +329,8 @@ static void ScanTokens(void *source, int source_length, Token *tokens,
 
   Token eof_token = {};
   eof_token.type = END_OF_FILE;
-  eof_token.lexeme = 0;
+  Lexeme lexeme = {};
+  eof_token.lexeme = lexeme;
   eof_token.literal = 0;
   eof_token.line = line;
 
@@ -355,11 +343,15 @@ static void Run(void *source, uint32_t source_length) {
   ScanTokens(source, source_length, tokens, &current_token_idx);
   for (int i = 0; i < current_token_idx + 1; ++i) {
     Token *token = &tokens[i];
-    printf("type: %s\tlexeme: %c\tliteral: %d\n", ToString(token->type),
-           token->lexeme, token->literal);
+    char *lexeme = new char[token->lexeme.length + 1];
+    for (int j = 0; j < token->lexeme.length; ++j) {
+      lexeme[j] = token->lexeme.start[j];
+    }
+    lexeme[token->lexeme.length] = '\0';
 
-    VirtualFree(&token->lexeme, 0, MEM_RELEASE);
-    token->lexeme = 0;
+    printf("type: %s\tlexeme: %s\tliteral: %d\n", ToString(token->type), lexeme,
+           token->literal);
+    delete[] lexeme;
   }
 
   delete[] tokens;
