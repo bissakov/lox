@@ -10,7 +10,7 @@
 
 static bool had_error;
 
-// TODO(bissakov): Implement platform-independant file IO.
+// TODO(bissakov): Implement platform-independent file IO.
 static void FreeMemory(void **memory) {
   if (!memory || !*memory) {
     return;
