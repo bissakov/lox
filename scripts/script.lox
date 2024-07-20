@@ -1,1 +1,4 @@
-var <mess>=age = ".Hello,=+";
+// this is a comment
+(( )){} // grouping stuff
+!*+-/=<> <= == // operators
+"Hello"
