@@ -37,12 +37,14 @@ enum TokenType {
   PRINT, RETURN, SUPER,
   SELF, VAR, WHILE,
 
-  END_OF_FILE
+  END_OF_FILE,
+
+  ILLEGAL
 };
 // clang-format on
 
 struct Lexeme {
-  const char *start;
+  char *start;
   int length;
 };
 
@@ -57,27 +59,27 @@ struct Error {
   int line;
   const char *where;
   const char *message;
+  const char *chara;
 };
 
 enum ResultStatus { RESULT_OK, RESULT_ERROR };
 
 struct Result {
   ResultStatus status;
-  union {
-    Token token;
-    Error error;
-  };
+  bool skip;
+  Token token;
+  Error error;
 };
 
 static void FreeMemory(void **memory);
 static FileResult ReadEntireFile(char *file_path);
 
 Token *GetToken(enum TokenType type, int literal, int start, int current,
-                void *source);
+                char *source);
 
 static void ReportError(Error *error);
 
-static bool Match(char expected_char, void *source, int source_length,
+static bool Match(char expected_char, char *source, int source_length,
                   int *current);
 
 static void ScanToken(Result *result, void *source, int source_length, int line,
@@ -85,9 +87,9 @@ static void ScanToken(Result *result, void *source, int source_length, int line,
 
 static bool IsAtEnd(int current, int source_length);
 
-static void ScanTokens(void *source, int source_length, Token *tokens);
+static void ScanTokens(char *source, int source_length, Token *tokens);
 
-static void Run(void *source, uint32_t source_length);
+static void Run(char *source, uint32_t source_length);
 
 static int RunFile(char *file_path);
 static void RunPrompt();
