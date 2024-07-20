@@ -46,12 +46,13 @@ enum TokenType {
 struct Lexeme {
   char *start;
   int length;
+  char *value;
 };
 
 struct Token {
   enum TokenType type;
   Lexeme lexeme;
-  int literal;
+  float literal;
   int line;
 };
 
@@ -74,20 +75,24 @@ struct Result {
 static void FreeMemory(void **memory);
 static FileResult ReadEntireFile(char *file_path);
 
-Token *GetToken(enum TokenType type, int literal, int start, int current,
-                char *source);
+static void GetToken(Token *token, enum TokenType type, float literal,
+                     int start, int current, char *source);
 
 static void ReportError(Error *error);
 
 static bool Match(char expected_char, char *source, int source_length,
                   int *current);
+static char Peek(char *source, int current, int source_length);
 
-static void ScanToken(Result *result, void *source, int source_length, int line,
-                      int start, int *current);
+static void ScanToken(Result *result, char *source, int source_length,
+                      int *line, int start, int *current);
 
 static bool IsAtEnd(int current, int source_length);
 
-static void ScanTokens(char *source, int source_length, Token *tokens);
+static void ScanTokens(char *source, int source_length, Token *tokens,
+                       int *current_token_idx);
+
+static char *ConstructLexemeString(char *start, int length);
 
 static void Run(char *source, uint32_t source_length);
 

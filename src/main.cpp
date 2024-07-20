@@ -63,12 +63,13 @@ static FileResult ReadEntireFile(char *file_path) {
   return result;
 }
 
-static void GetToken(Token *token, enum TokenType type, int literal, int start,
-                     int current, char *source) {
+static void GetToken(Token *token, enum TokenType type, float literal,
+                     int start, int current, char *source) {
   Lexeme lexeme = {};
   lexeme.start = source + start;
-  // lexeme.length = ((current - start) == 1) ? 1 : 2;
   lexeme.length = current - start;
+  char *value = ConstructLexemeString(lexeme.start, lexeme.length);
+  lexeme.value = value;
 
   token->type = type;
   token->lexeme = lexeme;
@@ -106,8 +107,14 @@ static char Peek(char *source, int current, int source_length) {
 
 static void ScanToken(Result *result, char *source, int source_length,
                       int *line, int start, int *current) {
-  char chara = source[*current];
-  *current += 1;
+  char chara = 0;
+
+  auto Advance = [&]() {
+    chara = source[*current];
+    *current += 1;
+  };
+
+  Advance();
 
   switch (chara) {
     case '\n': {
@@ -123,81 +130,80 @@ static void ScanToken(Result *result, char *source, int source_length,
     }
 
     case '(': {
-      GetToken(&result->token, LEFT_PAREN, 0, start, *current, source);
+      GetToken(&result->token, LEFT_PAREN, 0.0f, start, *current, source);
       break;
     }
     case ')': {
-      GetToken(&result->token, RIGHT_PAREN, 0, start, *current, source);
+      GetToken(&result->token, RIGHT_PAREN, 0.0f, start, *current, source);
       break;
     }
     case '{': {
-      GetToken(&result->token, LEFT_BRACE, 0, start, *current, source);
+      GetToken(&result->token, LEFT_BRACE, 0.0f, start, *current, source);
       break;
     }
     case '}': {
-      GetToken(&result->token, RIGHT_BRACE, 0, start, *current, source);
+      GetToken(&result->token, RIGHT_BRACE, 0.0f, start, *current, source);
       break;
     }
     case ',': {
-      GetToken(&result->token, COMMA, 0, start, *current, source);
+      GetToken(&result->token, COMMA, 0.0f, start, *current, source);
       break;
     }
     case '.': {
-      GetToken(&result->token, DOT, 0, start, *current, source);
+      GetToken(&result->token, DOT, 0.0f, start, *current, source);
       break;
     }
     case '-': {
-      GetToken(&result->token, MINUS, 0, start, *current, source);
+      GetToken(&result->token, MINUS, 0.0f, start, *current, source);
       break;
     }
     case '+': {
-      GetToken(&result->token, PLUS, 0, start, *current, source);
+      GetToken(&result->token, PLUS, 0.0f, start, *current, source);
       break;
     }
     case ';': {
-      GetToken(&result->token, SEMICOLON, 0, start, *current, source);
+      GetToken(&result->token, SEMICOLON, 0.0f, start, *current, source);
       break;
     }
     case '*': {
-      GetToken(&result->token, STAR, 0, start, *current, source);
+      GetToken(&result->token, STAR, 0.0f, start, *current, source);
       break;
     }
 
     case '!': {
       enum TokenType token_type =
           Match('=', source, source_length, current) ? BANG_EQUAL : BANG;
-      GetToken(&result->token, token_type, 0, start, *current, source);
+      GetToken(&result->token, token_type, 0.0f, start, *current, source);
       break;
     }
     case '=': {
       enum TokenType token_type =
           Match('=', source, source_length, current) ? EQUAL_EQUAL : EQUAL;
-      GetToken(&result->token, token_type, 0, start, *current, source);
+      GetToken(&result->token, token_type, 0.0f, start, *current, source);
       break;
     }
     case '<': {
       enum TokenType token_type =
           Match('=', source, source_length, current) ? LESS_EQUAL : LESS;
-      GetToken(&result->token, token_type, 0, start, *current, source);
+      GetToken(&result->token, token_type, 0.0f, start, *current, source);
       break;
     }
     case '>': {
       enum TokenType token_type =
           Match('=', source, source_length, current) ? GREATER_EQUAL : GREATER;
-      GetToken(&result->token, token_type, 0, start, *current, source);
+      GetToken(&result->token, token_type, 0.0f, start, *current, source);
       break;
     }
 
     case '/': {
       if (!Match('/', source, source_length, current)) {
-        GetToken(&result->token, SLASH, 0, start, *current, source);
+        GetToken(&result->token, SLASH, 0.0f, start, *current, source);
         break;
       }
 
       while (Peek(source, *current, source_length) != '\n' &&
              !IsAtEnd(*current, source_length)) {
-        chara = source[*current];
-        *current += 1;
+        Advance();
       }
       result->skip = true;
 
@@ -211,8 +217,7 @@ static void ScanToken(Result *result, char *source, int source_length,
           *line += 1;
         }
 
-        chara = source[*current];
-        *current += 1;
+        Advance();
       }
 
       if (IsAtEnd(*current, source_length)) {
@@ -222,19 +227,63 @@ static void ScanToken(Result *result, char *source, int source_length,
         result->error.message = "Unterminated string";
         result->error.chara = "";
         had_error = true;
+
+        ReportError(&result->error);
+
+        GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
+
         break;
       }
 
-      chara = source[*current];
-      *current += 1;
+      Advance();
 
-      GetToken(&result->token, STRING, 0, start + 1, *current - 1, source);
+      GetToken(&result->token, STRING, 0.0f, start + 1, *current - 1, source);
 
       break;
     }
 
     default: {
-      GetToken(&result->token, ILLEGAL, 0, start, *current, source);
+      auto IsDigit = [&](char chara) { return chara >= '0' && chara <= '9'; };
+
+      if (IsDigit(chara)) {
+        auto ConsumeDigits = [&]() {
+          while (IsDigit(Peek(source, *current, source_length))) {
+            Advance();
+          }
+        };
+
+        ConsumeDigits();
+
+        if (Peek(source, *current, source_length) == '.' &&
+            IsDigit(Peek(source, *current + 1, source_length))) {
+          Advance();
+
+          ConsumeDigits();
+        }
+
+        GetToken(&result->token, NUMBER, 0.0f, start, *current, source);
+        result->token.literal =
+            static_cast<float>(atof(result->token.lexeme.value));
+
+        break;
+      }
+
+      // auto IsLetter = [&](char chara) {
+      //   return (chara >= 'a' && chara <= 'z') || (chara >= 'A' && chara <=
+      //   'Z');
+      // };
+      //
+      // if (IsLetter(chara)) {
+      //   auto ConsumeLetters = [&]() {
+      //     while (IsLetter(Peek(source, *current, source_length))) {
+      //       Advance();
+      //     }
+      //   };
+      //
+      //   ConsumeLetters();
+      // }
+
+      GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
 
       result->status = RESULT_ERROR;
       result->error.line = *line;
@@ -292,6 +341,17 @@ static void ScanTokens(char *source, int source_length, Token *tokens,
   *current_token_idx += 1;
 }
 
+static char *ConstructLexemeString(char *start, int length) {
+  char *lexeme_string = new char[length + 1];
+  for (int j = 0; j < length; ++j) {
+    lexeme_string[j] = *GetElement<char>(start, length, j);
+  }
+  char *lexeme_end = lexeme_string + length;
+  *lexeme_end = '\0';
+
+  return lexeme_string;
+}
+
 static void Run(char *source, uint32_t source_length) {
   Token *tokens = new Token[2048];
   int current_token_idx = 0;
@@ -303,17 +363,11 @@ static void Run(char *source, uint32_t source_length) {
     }
 
     Token *token = &tokens[idx];
-    char *lexeme = new char[token->lexeme.length + 1];
-    for (int j = 0; j < token->lexeme.length; ++j) {
-      lexeme[j] =
-          *GetElement<char>(token->lexeme.start, token->lexeme.length, j);
-    }
-    char *lexeme_end = lexeme + token->lexeme.length;
-    *lexeme_end = '\0';
 
-    printf("type: %s\tlexeme: %s\tliteral: %d\n", ToString(token->type), lexeme,
-           token->literal);
-    delete[] lexeme;
+    printf("type: %s\tlexeme: %s\tliteral: %.2f\n", ToString(token->type),
+           token->lexeme.value, token->literal);
+
+    delete[] token->lexeme.value;
   }
 
   delete[] tokens;
