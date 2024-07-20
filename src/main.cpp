@@ -10,6 +10,7 @@
 
 static bool had_error;
 
+// TODO(bissakov): Implement platform-independant file IO.
 static void FreeMemory(void **memory) {
   if (!memory || !*memory) {
     return;
@@ -117,18 +118,21 @@ static void ScanToken(Result *result, char *source, int source_length,
   Advance();
 
   switch (chara) {
+    // NOTE: New line
     case '\n': {
       *line += 1;
       result->skip = true;
       break;
     }
 
+    // NOTE: Whitespace
     case ' ':
     case '\r': {
       result->skip = true;
       break;
     }
 
+    // NOTE: Single character tokens
     case '(': {
       GetToken(&result->token, LEFT_PAREN, 0.0f, start, *current, source);
       break;
@@ -170,6 +174,7 @@ static void ScanToken(Result *result, char *source, int source_length,
       break;
     }
 
+    // NOTE: Two character tokens
     case '!': {
       enum TokenType token_type =
           Match('=', source, source_length, current) ? BANG_EQUAL : BANG;
@@ -195,6 +200,7 @@ static void ScanToken(Result *result, char *source, int source_length,
       break;
     }
 
+    // NOTE: Comment or slash
     case '/': {
       if (!Match('/', source, source_length, current)) {
         GetToken(&result->token, SLASH, 0.0f, start, *current, source);
@@ -210,6 +216,7 @@ static void ScanToken(Result *result, char *source, int source_length,
       break;
     }
 
+    // NOTE: String literals
     case '"': {
       while (Peek(source, *current, source_length) != '"' &&
              !IsAtEnd(*current, source_length)) {
@@ -283,6 +290,7 @@ static void ScanToken(Result *result, char *source, int source_length,
       //   ConsumeLetters();
       // }
 
+      // NOTE: ILLEGAL character
       GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
 
       result->status = RESULT_ERROR;
@@ -360,6 +368,7 @@ static void Run(char *source, uint32_t source_length) {
   int current_token_idx = 0;
   ScanTokens(source, source_length, tokens, &current_token_idx);
 
+  // TODO(bissakov): Implement a better way to iterate over tokens.
   for (int idx = 0;; ++idx) {
     if (idx > 0 && tokens[idx - 1].type == END_OF_FILE) {
       break;
