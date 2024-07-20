@@ -452,6 +452,21 @@ static int RunFile(char *file_path) {
 static void RunPrompt() {
   // TODO(bissakov): Implement interactive prompt.
   printf("Running a prompt\n");
+
+  char input[100];
+  printf("Ctrl+Z or Ctrl+C to stop\n\n");
+  while (true) {
+    if (fgets(input, sizeof(input), stdin) == nullptr) {
+      break;
+    }
+
+    size_t len = strlen(input);
+    if (len > 0 && input[len - 1] == '\n') {
+      input[len - 1] = '\0';
+    }
+
+    printf("> %s\n", input);
+  }
 }
 
 int main(int argc, char *argv[]) {
