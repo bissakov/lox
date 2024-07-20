@@ -2,6 +2,7 @@
 
 #include "../src/main.h"
 
+// TODO(bissakov): Temporary. Might remove later.
 const char *ToString(enum TokenType token_type) {
   switch (token_type) {
     case LEFT_PAREN: {

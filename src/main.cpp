@@ -317,6 +317,8 @@ static void ScanTokens(char *source, int source_length, Token *tokens,
     start = current;
     Result result = {};
     ScanToken(&result, source, source_length, &line, start, &current);
+
+    // TODO(bissakov): Do I store ILLEGAL tokens or not?
     // if (result.status == RESULT_ERROR) {
     //   current++;
     //   continue;
@@ -353,6 +355,7 @@ static char *ConstructLexemeString(char *start, int length) {
 }
 
 static void Run(char *source, uint32_t source_length) {
+  // TODO(bissakov): Do I need a dynamic array? Not sure.
   Token *tokens = new Token[2048];
   int current_token_idx = 0;
   ScanTokens(source, source_length, tokens, &current_token_idx);
@@ -373,6 +376,7 @@ static void Run(char *source, uint32_t source_length) {
   delete[] tokens;
 }
 
+// TODO(bissakov): Better error handling.
 static int RunFile(char *file_path) {
   printf("Running file %s\n", file_path);
 
@@ -397,6 +401,7 @@ static int RunFile(char *file_path) {
 }
 
 static void RunPrompt() {
+  // TODO(bissakov): Implement interactive prompt.
   printf("Running a prompt\n");
 }
 

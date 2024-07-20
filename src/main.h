@@ -6,6 +6,8 @@
 #include <cstdint>
 
 #define ArraySize(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+// TODO(bissakov): Have DEV flags eventually.
 #define Assert(expression)              \
   if (!static_cast<bool>(expression)) { \
     __debugbreak();                     \
@@ -65,6 +67,8 @@ struct Error {
 
 enum ResultStatus { RESULT_OK, RESULT_ERROR };
 
+// TODO(bissakov): Need to think this one over
+// if I choose to discard ILLEGAL tokens.
 struct Result {
   ResultStatus status;
   bool skip;
