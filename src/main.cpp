@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include "../src/utils.h"
 
@@ -251,7 +252,15 @@ static void ScanToken(Result *result, char *source, int source_length,
 
     default: {
       auto IsDigit = [&](char chara) { return chara >= '0' && chara <= '9'; };
+      auto IsAlpha = [&](char chara) {
+        return (chara >= 'a' && chara <= 'z') ||
+               (chara >= 'A' && chara <= 'Z') || (chara == '_');
+      };
+      auto IsAlphaNum = [&](char chara) {
+        return IsDigit(chara) || IsAlpha(chara);
+      };
 
+      // NOTE: Numbers
       if (IsDigit(chara)) {
         auto ConsumeDigits = [&]() {
           while (IsDigit(Peek(source, *current, source_length))) {
@@ -275,20 +284,51 @@ static void ScanToken(Result *result, char *source, int source_length,
         break;
       }
 
-      // auto IsLetter = [&](char chara) {
-      //   return (chara >= 'a' && chara <= 'z') || (chara >= 'A' && chara <=
-      //   'Z');
-      // };
-      //
-      // if (IsLetter(chara)) {
-      //   auto ConsumeLetters = [&]() {
-      //     while (IsLetter(Peek(source, *current, source_length))) {
-      //       Advance();
-      //     }
-      //   };
-      //
-      //   ConsumeLetters();
-      // }
+      // NOTE: Identifiers
+      if (IsAlpha(chara)) {
+        while (IsAlphaNum(Peek(source, *current, source_length))) {
+          Advance();
+        }
+
+        GetToken(&result->token, IDENTIFIER, 0.0f, start, *current, source);
+
+        // TODO(bissakov): Need a hashmap.
+        if (strcmp(result->token.lexeme.value, "and") == 0) {
+          result->token.type = AND;
+        } else if (strcmp(result->token.lexeme.value, "class") == 0) {
+          result->token.type = CLASS;
+        } else if (strcmp(result->token.lexeme.value, "else") == 0) {
+          result->token.type = ELSE;
+        } else if (strcmp(result->token.lexeme.value, "false") == 0) {
+          result->token.type = BOOL_FALSE;
+        } else if (strcmp(result->token.lexeme.value, "for") == 0) {
+          result->token.type = FOR;
+        } else if (strcmp(result->token.lexeme.value, "func") == 0) {
+          result->token.type = FUNC;
+        } else if (strcmp(result->token.lexeme.value, "if") == 0) {
+          result->token.type = IF;
+        } else if (strcmp(result->token.lexeme.value, "nil") == 0) {
+          result->token.type = NIL;
+        } else if (strcmp(result->token.lexeme.value, "or") == 0) {
+          result->token.type = OR;
+        } else if (strcmp(result->token.lexeme.value, "print") == 0) {
+          result->token.type = PRINT;
+        } else if (strcmp(result->token.lexeme.value, "return") == 0) {
+          result->token.type = RETURN;
+        } else if (strcmp(result->token.lexeme.value, "super") == 0) {
+          result->token.type = SUPER;
+        } else if (strcmp(result->token.lexeme.value, "self") == 0) {
+          result->token.type = SELF;
+        } else if (strcmp(result->token.lexeme.value, "true") == 0) {
+          result->token.type = BOOL_TRUE;
+        } else if (strcmp(result->token.lexeme.value, "var") == 0) {
+          result->token.type = VAR;
+        } else if (strcmp(result->token.lexeme.value, "while") == 0) {
+          result->token.type = WHILE;
+        }
+
+        break;
+      }
 
       // NOTE: ILLEGAL character
       GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
