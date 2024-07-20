@@ -450,7 +450,9 @@ static int RunFile(char *file_path) {
 }
 
 static void RunPrompt() {
-  // TODO(bissakov): Implement interactive prompt.
+  // TODO(bissakov):
+  // Clean up and add parsing step
+  // instead of printing user's input.
   printf("Running a prompt\n");
 
   char input[100];

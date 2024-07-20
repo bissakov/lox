@@ -67,7 +67,8 @@ struct Error {
 
 enum ResultStatus { RESULT_OK, RESULT_ERROR };
 
-// TODO(bissakov): Need to think this one over
+// TODO(bissakov):
+// Need to think this one over
 // if I choose to discard ILLEGAL tokens.
 struct Result {
   ResultStatus status;
