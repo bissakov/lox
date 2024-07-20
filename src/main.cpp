@@ -203,16 +203,48 @@ static void ScanToken(Result *result, char *source, int source_length,
 
     // NOTE: Comment or slash
     case '/': {
-      if (!Match('/', source, source_length, current)) {
-        GetToken(&result->token, SLASH, 0.0f, start, *current, source);
-        break;
-      }
+      char next_chara = Peek(source, *current, source_length);
 
-      while (Peek(source, *current, source_length) != '\n' &&
-             !IsAtEnd(*current, source_length)) {
+      if (next_chara == '/') {
+        while (Peek(source, *current, source_length) != '\n' &&
+               !IsAtEnd(*current, source_length)) {
+          Advance();
+        }
+        result->skip = true;
+      } else if (next_chara == '*') {
+        // TODO(bissakov): Block comments, need a rewrite
         Advance();
+        while (Peek(source, *current, source_length) != '*' &&
+               Peek(source, *current + 1, source_length) != '/' &&
+               !IsAtEnd(*current, source_length)) {
+          if (Peek(source, *current, source_length) == '\n') {
+            *line += 1;
+          }
+          Advance();
+        }
+
+        if (IsAtEnd(*current, source_length)) {
+          result->status = RESULT_ERROR;
+          result->error.line = *line;
+          result->error.where = "";
+          result->error.message = "Unterminated block comment";
+          result->error.chara = "";
+          had_error = true;
+
+          ReportError(&result->error);
+
+          GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
+
+          break;
+        }
+
+        Advance();
+        Advance();
+
+        result->skip = true;
+      } else {
+        GetToken(&result->token, SLASH, 0.0f, start, *current, source);
       }
-      result->skip = true;
 
       break;
     }
