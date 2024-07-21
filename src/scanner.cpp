@@ -9,6 +9,11 @@
 
 bool had_error;
 
+void ReportError(Error *error) {
+  printf("[line %d] Error %s: %s %s.\n", error->line, error->where,
+         error->message, error->chara);
+}
+
 char *ConstructLexemeString(char *start, int length) {
   char *lexeme_string = new char[length + 1];
   for (int j = 0; j < length; ++j) {
@@ -32,11 +37,6 @@ void GetToken(Token *token, enum TokenType type, float literal, int start,
   token->lexeme = lexeme;
   token->literal = literal;
   token->line = 1;
-}
-
-void ReportError(Error *error) {
-  printf("[line %d] Error %s: %s %s.\n", error->line, error->where,
-         error->message, error->chara);
 }
 
 bool IsAtEnd(int current, int source_length) {
