@@ -31,6 +31,10 @@ static void ReportError(Error *error) {
          error->message, error->chara);
 }
 
+static bool IsAtEnd(int current, int source_length) {
+  return current >= source_length;
+}
+
 static bool Match(char expected_char, char *source, int source_length,
                   int *current) {
   if (IsAtEnd(*current, source_length)) {
@@ -332,10 +336,6 @@ static void ScanToken(Result *result, char *source, int source_length,
   if (result->status != RESULT_ERROR) {
     result->status = RESULT_OK;
   }
-}
-
-static bool IsAtEnd(int current, int source_length) {
-  return current >= source_length;
 }
 
 static void ScanTokens(char *source, int source_length, Token *tokens,
