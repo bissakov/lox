@@ -20,6 +20,8 @@ struct FileResult {
 
 // clang-format off
 enum TokenType {
+  UNSET,
+
   LEFT_PAREN, RIGHT_PAREN,
   LEFT_BRACE, RIGHT_BRACE,
 
