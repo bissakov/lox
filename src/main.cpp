@@ -98,22 +98,22 @@ static bool Match(char expected_char, char *source, int source_length,
   return true;
 }
 
-static char Peek(char *source, int current, int source_length) {
-  if (IsAtEnd(current, source_length)) {
-    return '\0';
-  }
-
-  char chara = source[current];
-  return chara;
-}
-
 static void ScanToken(Result *result, char *source, int source_length,
                       int *line, int start, int *current) {
   char chara = 0;
 
-  auto Advance = [&]() {
+  auto Advance = [&](int steps = 1) {
     chara = source[*current];
-    *current += 1;
+    *current += steps;
+  };
+
+  auto Peek = [&](int pos) {
+    if (IsAtEnd(pos, source_length)) {
+      return '\0';
+    }
+
+    char chara = source[pos];
+    return chara;
   };
 
   Advance();
@@ -203,45 +203,51 @@ static void ScanToken(Result *result, char *source, int source_length,
 
     // NOTE: Comment or slash
     case '/': {
-      char next_chara = Peek(source, *current, source_length);
-
-      if (next_chara == '/') {
-        while (Peek(source, *current, source_length) != '\n' &&
-               !IsAtEnd(*current, source_length)) {
+      if (Peek(*current) == '/') {
+        while (Peek(*current) != '\n' && !IsAtEnd(*current, source_length)) {
           Advance();
         }
         result->skip = true;
-      } else if (next_chara == '*') {
+      } else if (Peek(*current) == '*') {
         // TODO(bissakov): Block comments, need a rewrite
         Advance();
-        while (Peek(source, *current, source_length) != '*' &&
-               Peek(source, *current + 1, source_length) != '/' &&
-               !IsAtEnd(*current, source_length)) {
-          if (Peek(source, *current, source_length) == '\n') {
+
+        int nested_count = 1;
+
+        while (nested_count > 0) {
+          if (IsAtEnd(*current, source_length)) {
+            result->status = RESULT_ERROR;
+            result->error.line = *line;
+            result->error.where = "";
+            result->error.message = "Unterminated block comment";
+            result->error.chara = "";
+            had_error = true;
+
+            ReportError(&result->error);
+
+            GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
+
+            break;
+          }
+
+          if (Peek(*current) == '\n') {
             *line += 1;
           }
-          Advance();
+
+          if (Peek(*current) == '/' && Peek(*current + 1) == '*') {
+            Advance(2);
+            nested_count++;
+          } else if (Peek(*current) == '*' && Peek(*current + 1) == '/') {
+            Advance(2);
+            nested_count--;
+          } else {
+            Advance();
+          }
+
+          if (nested_count == 0) {
+            result->skip = true;
+          }
         }
-
-        if (IsAtEnd(*current, source_length)) {
-          result->status = RESULT_ERROR;
-          result->error.line = *line;
-          result->error.where = "";
-          result->error.message = "Unterminated block comment";
-          result->error.chara = "";
-          had_error = true;
-
-          ReportError(&result->error);
-
-          GetToken(&result->token, ILLEGAL, 0.0f, start, *current, source);
-
-          break;
-        }
-
-        Advance();
-        Advance();
-
-        result->skip = true;
       } else {
         GetToken(&result->token, SLASH, 0.0f, start, *current, source);
       }
@@ -251,9 +257,8 @@ static void ScanToken(Result *result, char *source, int source_length,
 
     // NOTE: String literals
     case '"': {
-      while (Peek(source, *current, source_length) != '"' &&
-             !IsAtEnd(*current, source_length)) {
-        if (Peek(source, *current, source_length) == '\n') {
+      while (Peek(*current) != '"' && !IsAtEnd(*current, source_length)) {
+        if (Peek(*current) == '\n') {
           *line += 1;
         }
 
@@ -295,15 +300,14 @@ static void ScanToken(Result *result, char *source, int source_length,
       // NOTE: Numbers
       if (IsDigit(chara)) {
         auto ConsumeDigits = [&]() {
-          while (IsDigit(Peek(source, *current, source_length))) {
+          while (IsDigit(Peek(*current))) {
             Advance();
           }
         };
 
         ConsumeDigits();
 
-        if (Peek(source, *current, source_length) == '.' &&
-            IsDigit(Peek(source, *current + 1, source_length))) {
+        if (Peek(*current) == '.' && IsDigit(Peek(*current + 1))) {
           Advance();
 
           ConsumeDigits();
@@ -318,7 +322,7 @@ static void ScanToken(Result *result, char *source, int source_length,
 
       // NOTE: Identifiers
       if (IsAlpha(chara)) {
-        while (IsAlphaNum(Peek(source, *current, source_length))) {
+        while (IsAlphaNum(Peek(*current))) {
           Advance();
         }
 
