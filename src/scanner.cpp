@@ -387,12 +387,9 @@ void Run(char *source, uint32_t source_length) {
   int current_token_idx = 0;
   ScanTokens(source, source_length, tokens, &current_token_idx);
 
-  // TODO(bissakov): Implement a better way to iterate over tokens.
-  for (int idx = 0;; ++idx) {
-    if (idx > 0 && tokens[idx - 1].type == END_OF_FILE) {
-      break;
-    }
+  Assert(tokens[current_token_idx - 1].type == END_OF_FILE);
 
+  for (int idx = 0; idx < current_token_idx; ++idx) {
     Token *token = &tokens[idx];
 
     printf("type: %s\tlexeme: %s\tliteral: %.2f\n", ToString(token->type),
