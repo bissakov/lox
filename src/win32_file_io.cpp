@@ -2,7 +2,7 @@
 
 #include <windows.h>
 
-#include "../src/main.h"
+#include "../src/utils.h"
 
 // TODO(bissakov): Implement platform-independent file IO.
 void FreeMemory(void **memory) {
