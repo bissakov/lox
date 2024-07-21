@@ -64,11 +64,11 @@ struct Result {
   Error error;
 };
 
+void ReportError(Error *error);
+
 char *ConstructLexemeString(char *start, int length);
 void GetToken(Token *token, enum TokenType type, float literal, int start,
               int current, char *source);
-
-void ReportError(Error *error);
 
 bool IsAtEnd(int current, int source_length);
 bool Match(char expected_char, char *source, int source_length, int *current);
