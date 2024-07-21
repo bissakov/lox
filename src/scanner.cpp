@@ -9,6 +9,17 @@
 
 bool had_error;
 
+char *ConstructLexemeString(char *start, int length) {
+  char *lexeme_string = new char[length + 1];
+  for (int j = 0; j < length; ++j) {
+    lexeme_string[j] = *GetElement<char>(start, length, j);
+  }
+  char *lexeme_end = lexeme_string + length;
+  *lexeme_end = '\0';
+
+  return lexeme_string;
+}
+
 void GetToken(Token *token, enum TokenType type, float literal, int start,
               int current, char *source) {
   Lexeme lexeme = {};
@@ -368,17 +379,6 @@ void ScanTokens(char *source, int source_length, Token *tokens,
 
   tokens[*current_token_idx] = eof_token;
   *current_token_idx += 1;
-}
-
-char *ConstructLexemeString(char *start, int length) {
-  char *lexeme_string = new char[length + 1];
-  for (int j = 0; j < length; ++j) {
-    lexeme_string[j] = *GetElement<char>(start, length, j);
-  }
-  char *lexeme_end = lexeme_string + length;
-  *lexeme_end = '\0';
-
-  return lexeme_string;
 }
 
 void Run(char *source, uint32_t source_length) {
