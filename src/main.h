@@ -5,6 +5,8 @@
 
 #include <cstdint>
 
+#include "../src/win32_file_io.h"
+
 #define ArraySize(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 // TODO(bissakov): Have DEV flags eventually.
@@ -12,11 +14,6 @@
   if (!static_cast<bool>(expression)) { \
     __debugbreak();                     \
   }
-
-struct FileResult {
-  uint32_t file_size;
-  void *content;
-};
 
 // clang-format off
 enum TokenType {
@@ -78,9 +75,6 @@ struct Result {
   Token token;
   Error error;
 };
-
-static void FreeMemory(void **memory);
-static FileResult ReadEntireFile(char *file_path);
 
 static void GetToken(Token *token, enum TokenType type, float literal,
                      int start, int current, char *source);
