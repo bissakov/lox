@@ -155,11 +155,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\scanner.cpp" />
     <ClCompile Include="src\utils.cpp" />
     <ClCompile Include="src\win32_file_io.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main.h" />
+    <ClInclude Include="src\scanner.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\win32_file_io.h" />
   </ItemGroup>
