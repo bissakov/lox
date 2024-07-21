@@ -34,22 +34,22 @@ enum TokenType {
 
 struct Lexeme {
   char *start;
-  int length;
   char *value;
+  int length;
 };
 
 struct Token {
-  enum TokenType type;
   Lexeme lexeme;
+  enum TokenType type;
   float literal;
   int line;
 };
 
 struct Error {
-  int line;
   const char *where;
   const char *message;
   const char *chara;
+  int line;
 };
 
 enum ResultStatus { RESULT_OK, RESULT_ERROR };
@@ -58,10 +58,10 @@ enum ResultStatus { RESULT_OK, RESULT_ERROR };
 // Need to think this one over
 // if I choose to discard ILLEGAL tokens.
 struct Result {
-  ResultStatus status;
-  bool skip;
   Token token;
   Error error;
+  ResultStatus status;
+  bool skip;
 };
 
 void ReportError(Error *error);
