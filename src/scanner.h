@@ -72,8 +72,6 @@ void ReportError(Error *error);
 
 bool IsAtEnd(int current, int source_length);
 bool Match(char expected_char, char *source, int source_length, int *current);
-char Peek(char *source, int current, int source_length);
-
 void ScanToken(Result *result, char *source, int source_length, int *line,
                int start, int *current);
 
